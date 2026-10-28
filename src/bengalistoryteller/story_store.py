@@ -19,11 +19,13 @@ def _write(stories):
     )
 
 
-def add_story(text):
+def add_story(text, model=None, theme=None):
     stories = load_stories()
     story = {
         "id": max((s["id"] for s in stories), default=0) + 1,
         "created_at": datetime.now().isoformat(timespec="seconds"),
+        "model": model,
+        "theme": theme,
         "text": text,
         "audio": None,
     }
