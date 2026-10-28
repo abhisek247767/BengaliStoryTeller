@@ -1,4 +1,5 @@
 import argparse
+import os
 import random
 import time
 
@@ -64,8 +65,14 @@ LESSONS = [
     "always tell the truth",
 ]
 
-MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-lite-latest"]
-RETRIES_PER_MODEL = 2
+MODELS = [
+    m.strip()
+    for m in os.getenv(
+        "MODELS", "gemini-3.8-flash,gemini-3.5-flash,gemini-flash-lite-latest"
+    ).split(",")
+    if m.strip()
+]
+RETRIES_PER_MODEL = int(os.getenv("RETRIES_PER_MODEL", "2"))
 
 
 def build_prompt():
@@ -81,10 +88,6 @@ def build_prompt():
         openings = "\n".join(f"- {s['text'].split('।')[0]}" for s in recent)
         avoid = f"These stories already exist; do not repeat their plot or opening:\n{openings}\n"
     return PROMPT.format(avoid=avoid, **theme), theme
-
-
-MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-lite-latest"]
-RETRIES_PER_MODEL = 2
 
 
 def generate_story(prompt):
