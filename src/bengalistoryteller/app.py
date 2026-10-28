@@ -1,7 +1,9 @@
 import argparse
+import time
 
 from dotenv import load_dotenv
 from google import genai
+from google.genai import errors, types
 
 from bengalistoryteller import story_store
 from bengalistoryteller.tts_mms import BengaliTTS
@@ -16,13 +18,32 @@ End each sentence with । ! or ?. Return only the story.
 """
 
 
+MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-lite-latest"]
+RETRIES_PER_MODEL = 2
+
+
 def generate_story():
-    client = genai.Client()
-    response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=PROMPT,
+    client = genai.Client(
+        http_options=types.HttpOptions(
+            timeout=60_000, retry_options=types.HttpRetryOptions(attempts=1)
+        )
     )
-    return response.text
+    last_error = None
+    for model in MODELS:
+        for attempt in range(1, RETRIES_PER_MODEL + 1):
+            print(f"Asking {model} (try {attempt})...", flush=True)
+            try:
+                response = client.models.generate_content(model=model, contents=PROMPT)
+                if response.text:
+                    return response.text
+                last_error = "empty response"
+            except errors.APIError as e:
+                last_error = f"{e.code} {e.message}"
+                print(f"  failed: {last_error}", flush=True)
+                if e.code not in (429, 500, 503, 504):
+                    break  # not a temporary problem, try next model
+            time.sleep(2 * attempt)
+    raise SystemExit(f"Could not get a story from Gemini: {last_error}")
 
 
 def speak(story):
